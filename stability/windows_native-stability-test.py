@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 import os
 import os.path
@@ -42,7 +42,13 @@ def downloadAndUnpack(sourceLocation, targetLocation):
         benchmarkTar.extractall()
         benchmarkTar.close()
     return 0
-    
+
+def writeBenchviewCSV(results):
+    csvFile = open("stability.csv", 'w')
+    for value in results:
+        csvFile.write("blackscholes,stability,{0}\r\n".format(value))
+    return 0
+
 def runAndProcess(commandLine, processFunc):
     # Current results
     results = []
@@ -66,6 +72,7 @@ def runAndProcess(commandLine, processFunc):
             print ("Standard deviation was %.2f%% of median %.3f over the last %d iterations" % (percentOfMedian, median, args.stabilization_iterations))
             if (percentOfMedian <= args.std_dev):
                 print ("Hit target of < %.2f%%, stopping" % (args.std_dev))
+                writeBenchviewCSV(results)
                 return 0
             else:
                 print ("Haven't hit target of < %.2f%%, continuing" % (args.std_dev))
@@ -74,6 +81,7 @@ def runAndProcess(commandLine, processFunc):
     # Something is wrong here.
     if (args.stabilization):
         print ("Failed to hit standard deviation target of %.2f%%, exiting" % (args.std_dev))
+        writeBenchviewCSV(results)
         return 1
     else:
         # Compute and print the standard deviation
@@ -81,20 +89,23 @@ def runAndProcess(commandLine, processFunc):
         print ("Standard deviation was %.2f%% of median %.3f." % (percentOfMedian, median))
         if (percentOfMedian <= args.std_dev):
             print ("Hit target of < %.2f%%" % (args.std_dev))
+            writeBenchviewCSV(results)
             return 0
         else:
             print ("Did not hit target of < %.2f%%, failing" % (args.std_dev))
+            writeBenchviewCSV(results)
             return 1
 
 # Computes the median and standard deviatio.  There isn't a standard library
 # for this so we do it manually.
 def computeStats(results, lastNValues):
-
     resultsLen = len(results)
     # Grab the sub array
     subArray = results[resultsLen-lastNValues:resultsLen]
-    # Sort
-    subArray = sorted(subArray)
+    # Sort and remove the top and bottom values
+    subArray = sorted(subArray)[1:(len(subArray)-1)]
+	# Adjust lastNValues to new number
+    lastNValues = lastNValues - 2
     # Find the median
     median = None
     medianValueIndex = (lastNValues - 1) / 2
@@ -137,7 +148,7 @@ def runParsec():
     targetFile = os.path.join(targetDir, 'blackscholes.tar.gz')
     downloadAndUnpack(benchmarkLocation, targetFile)
     
-    return runAndProcess('/mnt/j/workspace/dotnet_citest/stability_test_07_20/blackscholes_cpp_serial 1 in_10M.txt prices.txt', parsecProcessResults)
+    return runAndProcess("C:\\git\citest\\stability\\blackscholes\\blackscholes_cpp_serial 1 in_10M.txt prices.txt", parsecProcessResults)
     
 # List of benchmarks to run
 benchmarkRunners = {'Parsec': runParsec}
